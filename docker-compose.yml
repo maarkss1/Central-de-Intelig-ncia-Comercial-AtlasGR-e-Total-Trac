@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: atlas_postgres
+    environment:
+      POSTGRES_USER: prospector
+      POSTGRES_PASSWORD: prospector_pass
+      POSTGRES_DB: prospectordb
+    ports:
+      - "5434:5432"
+    volumes:
+      - atlas_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: atlas_redis
+    command: redis-server --requirepass prospector_redis_pass
+    ports:
+      - "6379:6379"
+    volumes:
+      - atlas_redisdata:/data
+    restart: unless-stopped
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: atlas_meilisearch
+    environment:
+      - MEILI_MASTER_KEY=atlasgr_meili_master_key
+      - MEILI_ENV=development
+    ports:
+      - "7700:7700"
+    volumes:
+      - atlas_meilidata:/meili_data
+    restart: unless-stopped
+
+volumes:
+  atlas_pgdata:
+  atlas_redisdata:
+  atlas_meilidata:
