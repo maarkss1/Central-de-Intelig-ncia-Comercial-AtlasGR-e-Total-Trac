@@ -1,12 +1,12 @@
-import { BaseMessage, StateGraph, MessagesAnnotation, MemorySaver } from '@langchain/langgraph';
-import { BaseMessage, ChatOpenAI } from '@langchain/openai';
-import { BaseMessage, prisma } from '../../../lib/prisma.js';
-import { BaseMessage, getLeadContextTool, updateLeadQualificationTool } from '../tools/crmTools.js';
-import { BaseMessage, searchPlaybookTool } from '../tools/playbookTool.js';
-import { BaseMessage, HumanMessage, SystemMessage, BaseMessage } from '@langchain/core/messages';
-import { BaseMessage, ToolNode } from '@langchain/langgraph/prebuilt';
+import { StateGraph, MessagesAnnotation, MemorySaver } from '@langchain/langgraph';
+import { ChatOpenAI } from '@langchain/openai';
+import { prisma } from '../../../lib/prisma.js';
+import { getLeadContextTool, updateLeadQualificationTool } from '../tools/crmTools.js';
+import { searchPlaybookTool } from '../tools/playbookTool.js';
+import { BaseMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { ToolNode } from '@langchain/langgraph/prebuilt';
 import type { Prisma } from '@prisma/client';
-import { BaseMessage, logger } from '../../../lib/logger.js';
+import { logger } from '../../../lib/logger.js';
 
 const LITELLM_URL = process.env.LITELLM_URL || 'http://localhost:4000';
 const LITELLM_KEY = process.env.LITELLM_KEY || 'sk-litellm';
@@ -72,8 +72,8 @@ function shouldContinue(state: typeof MessagesAnnotation.State) {
     // Se não for BaseMessage ou não tiver tool_calls, finalizamos.
     if (
         !lastMessage || 
-        typeof (lastMessage as BaseMessage & { tool_calls?: unknown[] }).tool_calls === 'undefined' ||
-        (lastMessage as BaseMessage & { tool_calls?: unknown[] }).tool_calls.length === 0
+        !(lastMessage as any).tool_calls ||
+        (lastMessage as any).tool_calls.length === 0
     ) {
         return "END";
     }
@@ -117,8 +117,8 @@ export class SDRAgent {
         const messages = finalState.messages as BaseMessage[];
         
         // Persistindo no nosso banco relacional de memória a longo prazo (AgentMemory)
-        await this.updateMemory(sid, messages.map((m: BaseMessage) => ({
-            role: m._getType(),
+        await this.updateMemory(sid, messages.map((m: any) => ({
+            role: m._getType ? m._getType() : 'user',
             content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
             toolCalls: m.tool_calls ? JSON.stringify(m.tool_calls) : undefined,
         })));
@@ -129,7 +129,7 @@ export class SDRAgent {
         return { success: true, sessionId: sid, detailedLog: detailedContent };
     }
 
-    private async updateMemory(sessionId: string, messages: BaseMessage[]) {
+    private async updateMemory(sessionId: string, messages: any[]) {
         try {
             const existing = await prisma.agentMemory.findFirst({
                 where: { sessionId }
