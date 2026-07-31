@@ -35,9 +35,8 @@ jobs:
       - name: Build project
         run: npm run build
 
-      # Se tivéssemos um script de testes unitários:
-      # - name: Run Tests
-      #   run: npm test
+      - name: Run Unit Tests
+        run: npm run test:unit
 
   publish:
     name: Build and Push Docker Image
